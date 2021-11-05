@@ -1,0 +1,25 @@
+version: '3.5'
+services:
+  alpha1:
+    command: dgraph alpha --my=alpha1:7080 --zero=zero1:5080
+    container_name: alpha1
+    environment:
+      DGRAPH_ALPHA_ACL: secret-file=/dgraph/acl/hmac_secret_file
+      DGRAPH_ALPHA_SECURITY: whitelist=10.0.0.0/8,172.0.0.0/8,192.168.0.0/16
+    image: dgraph/standalone:v21.03.0
+    ports:
+      - 8080:8080
+      - 9080:9080
+    volumes:
+      - ./hmac_secret_file:/dgraph/acl/hmac_secret_file
+  zero1:
+    command: dgraph zero --my=zero1:5080 --replicas 1 --raft idx=1
+    container_name: zero1
+    image: dgraph/standalone:v21.03.0
+    ports:
+      - 5080:5080
+      - 6080:6080
+  ratel:
+    image: dgraph/standalone:v21.03.0
+    ports:
+      - 8000:8000
