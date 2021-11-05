@@ -1,4 +1,4 @@
-# README.MD
+# EDITOR DE NODOS
 Atractivo editor de nodos para aprender cosas básicas de programación 
 
 ## Contenido
