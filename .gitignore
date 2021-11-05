@@ -10,3 +10,28 @@ notes.txt
 *.njsproj
 *.sln
 *.sw?
+
+nodes_front/.DS_Store
+nodes_front/node_modules
+nodes_front//dist
+
+
+# local env files
+nodes_front/.env.local
+nodes_front/.env.*.local
+
+# Log files
+nodes_front/npm-debug.log*
+nodes_front/yarn-debug.log*
+nodes_front/yarn-error.log*
+nodes_front/pnpm-debug.log*
+
+# Editor directories and files
+nodes_front/.idea
+nodes_front/.vscode
+nodes_front/*.suo
+nodes_front/*.ntvs*
+nodes_front/*.njsproj
+nodes_front/*.sln
+nodes_front/*.sw?
+
