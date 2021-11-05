@@ -1,9 +1,7 @@
 .DS_Store
 hmac_secret_file
 notes.txt
-nodes_front/.DS_Store
-nodes_front/node_modules
-/dist
+
 
 .idea
 .vscode
