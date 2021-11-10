@@ -32,7 +32,7 @@ const actions = {
             url: 'http://localhost:3333/nodes/'+payload.uid,
             data: {
                 token:"12345",
-                module: payload,
+                node: payload,
             }
         }).then(response => {
             return response;
@@ -73,9 +73,7 @@ const actions = {
             data: {
                 token:"12345",
                 output_connection: payload.output_connection,
-                input_connection: payload.input_connection,
-                output_input_output_uid: payload.output_input_output_uid,
-                input_input_output_uid: payload.input_input_output_uid
+                input_connection: payload.input_connection
             }
         }).then(response => {
             return response;
@@ -89,9 +87,7 @@ const actions = {
             data: {
                 token:"12345",
                 output_connection: payload.output_connection, 
-                input_connection: payload.input_connection,
-                output_connection_parent_uid: payload.output_connection_parent_uid,
-                input_connection_parent_uid: payload.input_connection_parent_uid
+                input_connection: payload.input_connection
             }
         }).then(response => {
             return response;

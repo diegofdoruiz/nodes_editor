@@ -54,7 +54,7 @@ func getDgraphClient() (*dgo.Dgraph, CancelFunc) {
 }
 
 func main() {
-	//log.Printf(dbCreateUser("diego", "test"))
+	log.Printf(dbCreateUser("diego", "test"))
 	//log.Printf(dbCreateUser("mario", "test"))
 
 	flag.Parse()
@@ -134,28 +134,48 @@ type Data struct {
 }
 
 type Connection struct {
-	Uid			string		`json:"uid,omitempty"` 
-	NodeNumber	string		`json:"node_number,omitempty"` //12
-	Port		string		`json:"port,omitempty"` // output_1
-	DgraphType	string 		`json:"dgraph.type,omitempty"`
+	Uid			string				`json:"uid,omitempty"`
+	Node		string				`json:"node,omitempty"`
+	Input 		string 				`json:"input,omitempty"`
+	Output 		string 				`json:"output,omitempty"`
+	Group		*ConnectionGroup	`json:"group,omitempty"`
+	DgraphType	string 				`json:"dgraph.type,omitempty"`
 }
 
-type InputOutput struct {
-	Uid			string			`json:"uid,omitempty"` 
-	NodeUID		string			`json:"node_uid,omitempty"`
-	Name		string			`json:"name,omitempty"` //input_1
-	Type		string			`json:"type,omitempty"`   //input / output
-	Connections []*Connection	`json:"connections,omitempty"`
-	DgraphType	string 			`json:"dgraph.type,omitempty"`	
+type ConnectionGroup struct {
+	Uid				string				`json:"uid,omitempty"`
+	Connections		[]*Connection		`json:"connections,omitempty"`
+	DgraphType		string 				`json:"dgraph.type,omitempty"`
 }
 
-type Node struct {
+type Inputs struct {
+	Uid			string				`json:"uid,omitempty"`
+	Input1		*ConnectionGroup 	`json:"input_1,omitempty"`
+	Input2		*ConnectionGroup 	`json:"input_2,omitempty"`
+	Input3		*ConnectionGroup 	`json:"input_3,omitempty"`
+	Input4		*ConnectionGroup 	`json:"input_4,omitempty"`
+	Input5		*ConnectionGroup 	`json:"input_5,omitempty"`
+	DgraphType	string 				`json:"dgraph.type,omitempty"`
+}
+
+type Outputs struct {
+	Uid			string				`json:"uid,omitempty"`
+	Output1		*ConnectionGroup 	`json:"output_1,omitempty"`
+	Output2		*ConnectionGroup 	`json:"output_2,omitempty"`
+	Output3		*ConnectionGroup 	`json:"output_3,omitempty"`
+	Output4		*ConnectionGroup 	`json:"output_4,omitempty"`
+	Output5		*ConnectionGroup 	`json:"output_5,omitempty"`
+	DgraphType	string 				`json:"dgraph.type,omitempty"`
+}
+
+type DrawflowNode struct {
 	Uid				string			`json:"uid,omitempty"`
 	ModuleUID		string			`json:"module_uid,omitempty"`
 	Id				int				`json:"id,omitempty"`
 	Name			string			`json:"name,omitempty"`
-	Data 			Data			`json:"data,omitempty"`
-	InputsOutputs	[]*InputOutput	`json:"inputs_outputs,omitempty"`
+	Data 			*Data			`json:"data,omitempty"`
+	Inputs			*Inputs			`json:"inputs"`
+	Outputs			*Outputs		`json:"outputs"`
 	Class			string			`json:"class,omitempty"`
 	Html			string			`json:"html,omitempty"`
 	Typenode		bool			`json:"typenode"`
@@ -524,10 +544,10 @@ func dbDeleteModule(uid string) int {
 	return 1
 }
 
-func dbCreateNode(node *Node) (Node, error) {
+func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 	dg, cancel := getDgraphClient()
 	defer cancel()
-
+	
 	no := &api.Operation{}
 	no.Schema = `
 		module_uid: string @index(exact) .
@@ -540,15 +560,25 @@ func dbCreateNode(node *Node) (Node, error) {
 		pos_y: float .
 		value: string .
 		operator: string .
-		port: string .
-		input: string .
-		type: string .
 		Data: uid @reverse .
-		InputOutput: [uid] @reverse .
-		Connection: [uid] .
-		node_number: string .
-		port: string .
-		type Node {
+		Inputs: uid @reverse .
+		Outputs: uid @reverse .
+		input_1: uid @reverse .
+		input_2: uid @reverse .
+		input_3: uid @reverse .
+		input_4: uid @reverse .
+		input_5: uid @reverse .
+		output_1: uid @reverse .
+		output_2: uid @reverse .
+		output_3: uid @reverse .
+		output_4: uid @reverse .
+		output_5: uid @reverse .
+		group: uid @reverse .
+		connections: [uid] .
+		node: string .
+		input: string .
+		output: string .
+		type DrawflowNode {
 			module_uid: string
 			id: int
 			name: string
@@ -558,21 +588,36 @@ func dbCreateNode(node *Node) (Node, error) {
 			pos_x: float
 			pos_y: float
 			Data: Data
-			InputOutput: [InputOutput]
+			Inputs: Inputs
+			Outputs: Outputs 
 		}
 		type Data {
 			name:	string
 			value: string
 			operator: string
 		}
-		type InputOutput {
-			name: string
-			type: string
-			Connection: [Connection]
+		type Inputs {
+			input_1: ConnectionGroup
+			input_2: ConnectionGroup
+			input_3: ConnectionGroup
+			input_4: ConnectionGroup
+			input_5: ConnectionGroup
+		}
+		type Outputs {
+			output_1: ConnectionGroup
+			output_2: ConnectionGroup
+			output_3: ConnectionGroup
+			output_4: ConnectionGroup
+			output_5: ConnectionGroup
+		}
+		type ConnectionGroup {
+			connections: [Connection]
 		}
 		type Connection {
-			node_number: string
-			port: string
+			node: string
+			input: string
+			output: string
+			group: ConnectionGroup
 		}
 	`
 
@@ -585,7 +630,7 @@ func dbCreateNode(node *Node) (Node, error) {
 		CommitNow: true,
 	}
 
-	nb, err := json.Marshal(node)
+	nb, err := json.Marshal(drawflow_node)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -596,26 +641,124 @@ func dbCreateNode(node *Node) (Node, error) {
 		log.Fatal(err)
 	}
 
-	id := strconv.Itoa(node.Id)
+	id := strconv.Itoa(drawflow_node.Id)
 	vars := make(map[string]string)
-	vars["$moduleuid"] = node.ModuleUID
+	vars["$moduleuid"] = drawflow_node.ModuleUID
 	vars["$id"] = id
 	q := `query getcreatednode($moduleuid: string, $id: string){
-		nodes(func: type(Node)) @filter(eq(module_uid, $moduleuid) and eq(id, $id) ){
+		nodes(func: type(DrawflowNode)) @filter(eq(module_uid, $moduleuid) and eq(id, $id) ){
 			uid
 			expand(_all_)
 			data{
 				uid
 				expand(_all_)
 			}
-			inputs_outputs{
+			inputs{
 				uid
-				expand(_all_)
-				connections{
+				input_1{
 					uid
-			  		expand(_all_)
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
 				}
-		  	}
+				input_2{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				input_3{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				input_4{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				input_5{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+			}
+			outputs{
+				uid
+				output_1{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				output_2{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				output_3{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				output_4{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				output_5{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+			}
 		}
 	}`
 
@@ -625,7 +768,7 @@ func dbCreateNode(node *Node) (Node, error) {
 	}
 
 	type arrays struct{
-		Uids	[]Node `json:"nodes"`
+		Uids	[]DrawflowNode `json:"nodes"`
 	}
 
 	var r arrays
@@ -638,31 +781,129 @@ func dbCreateNode(node *Node) (Node, error) {
 		return r.Uids[0], nil
 	}
 
-	return Node{}, nil
+	return DrawflowNode{}, nil
 }
 
-func dbModuleGetNodes(module_uid string) []*Node {
+func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 	dg, cancel := getDgraphClient()
 	defer cancel()
 
 	vars := make(map[string]string)
 	vars["$module_uid"] = module_uid
 	q := `query modulenodes($module_uid: string){
-		nodes(func: type(Node)) @filter(eq(module_uid, $module_uid)) {
+		nodes(func: type(DrawflowNode)) @filter(eq(module_uid, $module_uid)) {
 			uid
 			expand(_all_)
 			data{
 				uid
 				expand(_all_)
 			}
-			inputs_outputs{
+			inputs{
 				uid
-				expand(_all_)
-				connections{
+				input_1{
 					uid
-			  		expand(_all_)
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
 				}
-		  	}
+				input_2{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				input_3{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				input_4{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				input_5{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+			}
+			outputs{
+				uid
+				output_1{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				output_2{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				output_3{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				output_4{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+				output_5{
+					uid
+					connections: :~group{
+						uid
+						expand(_all_)
+						group{
+							uid
+						}
+					}
+				}
+			}
 		}
 	}`
 
@@ -674,7 +915,7 @@ func dbModuleGetNodes(module_uid string) []*Node {
 	}
 
 	type arrays struct{
-		Uids	[]*Node `json:"nodes,omitempty"`
+		Uids	[]*DrawflowNode `json:"nodes,omitempty"`
 	}
 
 	var nodes arrays
@@ -683,91 +924,100 @@ func dbModuleGetNodes(module_uid string) []*Node {
 	if err != nil{
 		log.Println(err)
 	}
-
-	log.Println(nodes)
 
 	return nodes.Uids
 }
 
-func dbDeleteNode(uid string) bool {
+func dbDeleteNode(node *DrawflowNode) bool {
 	dg, cancel := getDgraphClient()
 	defer cancel()
-
-	vars := make(map[string]string)
-	vars["$uid"] = uid
-	q := `query getnodes($uid: string){
-				nodes(func: type(Node)) @filter(uid($uid)) {
-			uid
-			expand(_all_)
-			data{
-				uid
-				expand(_all_)
-			}
-			inputs_outputs{
-				uid
-				expand(_all_)
-				connections{
-					uid
-			  		expand(_all_)
-				}
-		  	}
-		}
-	}`
-
 	ctx := context.Background()
 
-	resp, err := dg.NewTxn().QueryWithVars(ctx,q,vars)
+	type UidStruct struct {
+		Uid string	`json:"uid"`
+	}
+
+	all_uids := []UidStruct{UidStruct{node.Uid}}
+	all_uids = append(all_uids, UidStruct{node.Data.Uid})
+	all_uids = append(all_uids, UidStruct{node.Inputs.Uid})
+	if node.Inputs.Input1 != nil {
+		all_uids = append(all_uids, UidStruct{node.Inputs.Input1.Uid})
+		for _, connection := range node.Inputs.Input1.Connections {
+			all_uids = append(all_uids, UidStruct{connection.Uid})
+		}
+	}
+	if node.Inputs.Input2 != nil {
+		all_uids = append(all_uids, UidStruct{node.Inputs.Input2.Uid})
+		for _, connection := range node.Inputs.Input2.Connections {
+			all_uids = append(all_uids, UidStruct{connection.Uid})
+		}
+	}
+	if node.Inputs.Input3 != nil {
+		all_uids = append(all_uids, UidStruct{node.Inputs.Input3.Uid})
+		for _, connection := range node.Inputs.Input3.Connections {
+			all_uids = append(all_uids, UidStruct{connection.Uid})
+		}
+	}
+	if node.Inputs.Input4 != nil {
+		all_uids = append(all_uids, UidStruct{node.Inputs.Input4.Uid})
+		for _, connection := range node.Inputs.Input4.Connections {
+			all_uids = append(all_uids, UidStruct{connection.Uid})
+		}
+	}
+	if node.Inputs.Input5 != nil {
+		all_uids = append(all_uids, UidStruct{node.Inputs.Input5.Uid})
+		for _, connection := range node.Inputs.Input5.Connections {
+			all_uids = append(all_uids, UidStruct{connection.Uid})
+		}
+	}
+	all_uids = append(all_uids, UidStruct{node.Outputs.Uid})
+	if node.Outputs.Output1 != nil {
+		all_uids = append(all_uids, UidStruct{node.Outputs.Output1.Uid})
+		for _, connection := range node.Outputs.Output1.Connections {
+			all_uids = append(all_uids, UidStruct{connection.Uid})
+		}
+	}
+	if node.Outputs.Output2 != nil {
+		all_uids = append(all_uids, UidStruct{node.Outputs.Output2.Uid})
+		for _, connection := range node.Outputs.Output2.Connections {
+			all_uids = append(all_uids, UidStruct{connection.Uid})
+		}
+	}
+	if node.Outputs.Output3 != nil {
+		all_uids = append(all_uids, UidStruct{node.Outputs.Output3.Uid})
+		for _, connection := range node.Outputs.Output3.Connections {
+			all_uids = append(all_uids, UidStruct{connection.Uid})
+		}
+	}
+	if node.Outputs.Output4 != nil {
+		all_uids = append(all_uids, UidStruct{node.Outputs.Output4.Uid})
+		for _, connection := range node.Outputs.Output4.Connections {
+			all_uids = append(all_uids, UidStruct{connection.Uid})
+		}
+	}
+	if node.Outputs.Output5 != nil {
+		all_uids = append(all_uids, UidStruct{node.Outputs.Output5.Uid})
+		for _, connection := range node.Outputs.Output5.Connections {
+			all_uids = append(all_uids, UidStruct{connection.Uid})
+		}
+	}
+
+	pb, err := json.Marshal(all_uids)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+	mu := &api.Mutation{
+        CommitNow:  true,
+        DeleteJson: pb,
+    }	
+
+	resp, err := dg.NewTxn().Mutate(ctx, mu)
 	if err != nil {
-		log.Println(err)
+		return false
 	}
-
-	type arrays struct{
-		Uids	[]*Node `json:"nodes,omitempty"`
-	}
-
-	var nodes arrays
-	var deleted bool
-	deleted = false
-
-	err = json.Unmarshal([]byte(resp.Json), &nodes)
-	if err != nil{
-		log.Println(err)
-	}
-
-	//Get nodes
-	for _, node := range nodes.Uids {
-		//Delete node data
-		data_uid := node.Data.Uid
-		if data_uid != ""{
-			dbDeleteAnyByUidType(data_uid, "Data")
-		}
-		//Delete node inputs_outputs
-		inputs_outputs := node.InputsOutputs
-		for _, input_output := range inputs_outputs{
-			input_output_uid := input_output.Uid
-
-			//Delete input_output connections
-			connections := input_output.Connections
-			for _, connection := range connections{
-				connection_uid := connection.Uid
-				if connection_uid != "" {
-					dbDeleteAnyByUidType(connection_uid, "Connection")
-				}
-			}
-
-			//Delete this input_output
-			if input_output_uid != "" {
-				dbDeleteAnyByUidType(input_output_uid, "InputOutput")
-			}
-		}
-
-		//Finally delete this node 
-		node_uid := node.Uid 
-		if node_uid != "" {
-			deleted = dbDeleteAnyByUidType(node_uid, "Node")
-		}
-	}
-	return deleted
+	if resp == nil {}
+	return true
 }
 
 func dbNodeUpdatePosition(node_uid string, pos_x float32, pos_y float32) bool {
@@ -795,7 +1045,6 @@ func dbNodeUpdatePosition(node_uid string, pos_x float32, pos_y float32) bool {
 	return true
 }
 
-
 func dbUpdateData(data *Data) bool {
 
 	dg, cancel := getDgraphClient()
@@ -822,17 +1071,23 @@ func dbUpdateData(data *Data) bool {
 	return true
 }
 
-func dbcreateConnection(connection *Connection) string {
+func dbcreateConnection(input_connection *Connection, output_connection *Connection) *CreateConnectionResponse {
 	dg, cancel := getDgraphClient()
 	defer cancel()
 
+	var connections_array [2]*Connection
+	connections_array[0] = input_connection
+	connections_array[1] = output_connection
+
 	co := &api.Operation{}
 	co.Schema = `
-		node_number: string .
-		port: string .
+		node: string .
+		input: string .
+		output: string .
 		type Connection {
-			node_number: string
-			port: string
+			node: string
+			input: string
+			output: string
 		}
 	`
 
@@ -844,7 +1099,7 @@ func dbcreateConnection(connection *Connection) string {
 	mu := &api.Mutation{
 		CommitNow: true,
 	}
-	cb, err := json.Marshal(connection)
+	cb, err := json.Marshal(connections_array)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -855,17 +1110,26 @@ func dbcreateConnection(connection *Connection) string {
 		log.Fatal(err)
 	}
 
-	var uid string
-	uid = ""
 	//Get created program uid
+	var input_connection_uid string
+	var output_connection_uid string
+	var counter int
+	input_connection_uid = ""
+	output_connection_uid = ""
+	counter = 0
 	for _, value := range response.Uids {
-		uid = value
+		if counter == 0 {
+			input_connection_uid = value
+		}else{
+			output_connection_uid = value
+		}
+		counter = counter + 1
 	}
-
-	return uid
+	resp := &CreateConnectionResponse{ConnectionOutputUID: output_connection_uid, ConnectionInputUID:input_connection_uid}
+	return resp
 }
 
-func dbInputOutputAddConnection(input_output_uid string, connection_uid string){
+func dbInputOutputAddConnection(group_connections_uid string, connection_uid string){
 	dg, cancel := getDgraphClient()
 	defer cancel()
 
@@ -875,7 +1139,7 @@ func dbInputOutputAddConnection(input_output_uid string, connection_uid string){
 		CommitNow: true,
 	}
 
-	t := fmt.Sprintf("<%s> <connections> <%s> .",input_output_uid,connection_uid)
+	t := fmt.Sprintf("<%s> <connections> <%s> .",group_connections_uid,connection_uid)
 	mu.SetNquads = []byte(t)
 
 	assign,err := dg.NewTxn().Mutate(ctx,mu)
@@ -885,26 +1149,37 @@ func dbInputOutputAddConnection(input_output_uid string, connection_uid string){
 	}
 }
 
-func dbDeleteConnection(parent_uid string, connection *Connection){
+func dbDeleteConnection(input_connection *Connection, output_connection *Connection){
 	dg, cancel := getDgraphClient()
 	defer cancel()
 	ctx := context.Background()
 
-	//Remove relation between OutputConnection and Connection
 	type UidStruct struct {
 		Uid string	`json:"uid"`
 	}
-	connection_uids := [1]UidStruct {{connection.Uid}} // [{uid:"0x4"}]
-	d := map[string]interface{}{
-        "uid": parent_uid,
-        "connections": &connection_uids,
-    }
+	
+	type RemoveConnection struct {
+		Uid		string		`json:"uid,omitempty"`
+		Group	[]UidStruct `json:"group,omitempty"`
+	}
 
-    pb, err := json.Marshal(d)
+	input_relationship := RemoveConnection{Uid:input_connection.Uid, Group:[]UidStruct {{input_connection.Group.Uid}}}
+	input_child := RemoveConnection{Uid:input_connection.Uid}
+
+	output_relationship := RemoveConnection{Uid:output_connection.Uid, Group:[]UidStruct {{output_connection.Group.Uid}}}
+	output_child := RemoveConnection{Uid:output_connection.Uid}
+
+	var connections_array [4]RemoveConnection
+	connections_array[0] = input_relationship
+	connections_array[1] = input_child
+	connections_array[2] = output_relationship
+	connections_array[3] = output_child
+
+    pb, err := json.Marshal(connections_array)
     if err != nil {
         log.Fatal(err)
     }
-
+	
     mu := &api.Mutation{
         CommitNow:  true,
         DeleteJson: pb,
@@ -912,8 +1187,6 @@ func dbDeleteConnection(parent_uid string, connection *Connection){
 
 	resp, err := dg.NewTxn().Mutate(ctx, mu)
 	if resp == nil {}
-
-	dbDeleteAnyByUidType(connection.Uid, "Connection");
 }
 /******************************************************************************
 ********************************* End database ********************************
@@ -1136,7 +1409,7 @@ func NewModuleListResponse(modules []*Module) []render.Renderer {
 
 type ModuleResponse struct {
 	*Module
-	Nodes	[]*Node	`json:"nodes,omitempty"`
+	Nodes	[]*DrawflowNode	`json:"nodes,omitempty"`
 }
 
 func (rd *ModuleResponse) Render(w http.ResponseWriter, r *http.Request) error {
@@ -1187,9 +1460,7 @@ func ClearModule(w http.ResponseWriter, r *http.Request) {
 	module_uid := chi.URLParam(r, "moduleUID")
 	nodes := dbModuleGetNodes(module_uid)
 	for _, node := range nodes {
-		if node.Uid != "" {
-			dbDeleteAnyByUidType(node.Uid, "Node")
-		}
+		dbDeleteNode(node)
 	}
 	render.Status(r, http.StatusAccepted)
 }
@@ -1197,12 +1468,12 @@ func ClearModule(w http.ResponseWriter, r *http.Request) {
 
 /***************************** Start Nodes ***********************************/
 type NodeRequest struct {
-	Node			*Node			`json:"node,omitempty"`
+	DrawflowNode	*DrawflowNode	`json:"node,omitempty"`
 	Token			string			`json:"token,omitempty"`
 }
 
 func (a *NodeRequest) Bind(r *http.Request) error {
-	if a.Node == nil {
+	if a.DrawflowNode == nil {
 		return errors.New("missing required Node fields.")
 	}
 	return nil
@@ -1216,16 +1487,16 @@ func CreateNode(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	node, _ := dbCreateNode(data.Node)
-	resp := &CreateNodeResponse{Created: true, Node:node}
+	node, _ := dbCreateNode(data.DrawflowNode)
+	resp := &CreateNodeResponse{Created: true, DrawflowNode:node}
 
 	render.Status(r, http.StatusCreated)
 	render.Render(w, r, resp)
 }
 
 type CreateNodeResponse struct {
-	Created		bool	`json:"created,omitempty"`
-	Node 		Node 	`json:"node,omitempty"`
+	Created			bool	`json:"created,omitempty"`
+	DrawflowNode 	DrawflowNode 	`json:"node,omitempty"`
 }
 
 func (rd *CreateNodeResponse) Render(w http.ResponseWriter, r *http.Request) error {
@@ -1233,19 +1504,36 @@ func (rd *CreateNodeResponse) Render(w http.ResponseWriter, r *http.Request) err
 	return nil
 }
 
+type DeleteNodeRequest struct {
+	Node		*DrawflowNode	`json:"node,omitempty"`
+	Token		string			`json:"token,omitempty"`
+}
+
+func (a *DeleteNodeRequest) Bind(r *http.Request) error {
+	if a.Node == nil {
+		return errors.New("missing required Node fields.")
+	}
+	return nil
+}
+
 // DeleteNode removes an existing Node from our persistent store.
 func DeleteNode(w http.ResponseWriter, r *http.Request) {
 	
-	node_uid := chi.URLParam(r, "nodeUID")
+	//node_uid := chi.URLParam(r, "nodeUID")
+	data := &DeleteNodeRequest{}
+	if err := render.Bind(r, data); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
+		return
+	}
 
-	deleted := dbDeleteNode(node_uid)
+	deleted := dbDeleteNode(data.Node)
 
 	if(!deleted){
 		render.Render(w, r, ErrNotFound)
 		return
 	}else{
 
-		resp := &DeleteNodeResponse{Deleted: deleted, Uid:node_uid}
+		resp := &DeleteNodeResponse{Deleted: deleted}
 
 		render.Status(r, http.StatusAccepted)
 		render.Render(w, r, resp)
@@ -1254,7 +1542,6 @@ func DeleteNode(w http.ResponseWriter, r *http.Request) {
 }
 type DeleteNodeResponse struct {
 	Deleted		bool	`json:"deleted,omitempty"`
-	Uid 		string 	`json:"uid,omitempty"`
 }
 
 func (rd *DeleteNodeResponse) Render(w http.ResponseWriter, r *http.Request) error {
@@ -1332,11 +1619,9 @@ func (rd *DataNodeResponse) Render(w http.ResponseWriter, r *http.Request) error
 }
 
 type CreateConnectionRequest struct {
-	OutputConnection		*Connection		`json:"output_connection,omitempty"`
-	InputConnection			*Connection		`json:"input_connection,omitempty"`
-	OutputInputOutputUID	string 			`json:"output_input_output_uid,omitempty"`
-	InputInputOutputUID		string 			`json:"input_input_output_uid,omitempty"`
-	Token					string			`json:"token,omitempty"`
+	OutputConnection			*Connection		`json:"output_connection,omitempty"`
+	InputConnection				*Connection		`json:"input_connection,omitempty"`
+	Token						string			`json:"token,omitempty"`
 }
 
 func (a *CreateConnectionRequest) Bind(r *http.Request) error {
@@ -1354,13 +1639,7 @@ func CreateConnection(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	output_connection_uid := dbcreateConnection(data.OutputConnection)
-	input_connection_uid := dbcreateConnection(data.InputConnection)
-
-	dbInputOutputAddConnection(data.OutputInputOutputUID, output_connection_uid)
-	dbInputOutputAddConnection(data.InputInputOutputUID, input_connection_uid)
-
-	resp := &CreateConnectionResponse{ConnectionOutputUID: output_connection_uid, ConnectionInputUID:input_connection_uid}
+	resp := dbcreateConnection(data.InputConnection,data.OutputConnection)
 	render.Status(r, http.StatusCreated)
 	render.Render(w, r, resp)
 }
@@ -1379,8 +1658,6 @@ func (rd *CreateConnectionResponse) Render(w http.ResponseWriter, r *http.Reques
 type DeleteConnectionsRequest struct {
 	OutputConnection			*Connection		`json:"output_connection,omitempty"`
 	InputConnection				*Connection		`json:"input_connection,omitempty"`
-	OutputConnectionParentId	string			`json:"output_connection_parent_uid,omitempty"`
-	InputConnectionParentId		string			`json:"input_connection_parent_uid,omitempty"`
 	Token						string			`json:"token,omitempty"`
 }
 
@@ -1398,9 +1675,7 @@ func DeleteConnections(w http.ResponseWriter, r *http.Request){
 		render.Render(w, r, ErrInvalidRequest(err))
 		return
 	}
-	dbDeleteConnection(data.OutputConnectionParentId, data.OutputConnection);
-	dbDeleteConnection(data.InputConnectionParentId, data.InputConnection);
-	
+	dbDeleteConnection(data.InputConnection, data.OutputConnection);	
 	render.Status(r, http.StatusAccepted)
 }
 

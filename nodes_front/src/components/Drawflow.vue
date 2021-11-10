@@ -210,13 +210,15 @@
                         let dataToImport = {};
                         var data_modules = {};
                         let current_context = this;
+
+                        let back_modules = JSON.parse(JSON.stringify(res.data));
+                        
                         this.modules_info = res.data;
-                        let me = this;
 
                         let first_module_uid = "";
 
                         //Format all modules from backend
-                        res.data.map(function(module, key) {
+                        back_modules.map(function(module, key) {
                             
                             //Data for nav tabs
                             //current_context.mydrawflow.editor.addModule(module.uid);
@@ -237,10 +239,27 @@
                             
                             if(module.nodes){
                                 module.nodes.map(function(node) {
-                                    nodes_json[node.id] = me.formatNode(node);
+                                    if(node.inputs == null){
+                                        node["inputs"] = {};
+                                    }
+                                    if(node.outputs == null){
+                                        node["outputs"] = {};
+                                    }
+                                    for(let key1 in node.inputs){
+                                        if(key1 != "uid" && node.inputs[key1].connections == null){
+                                            node.inputs[key1].connections = [];
+                                        }
+                                    }
+                                    for(let key2 in node.outputs){
+                                        if(key2 != "uid" && node.outputs[key2].connections == null){
+                                            node.outputs[key2].connections = [];
+                                        }
+                                    }
+                                    delete node.inputs["uid"];
+                                    delete node.outputs["uid"];
+                                    nodes_json[node.id] = node;
                                 });
                             }
-
                             nodes_data["data"] = nodes_json;
                             data_modules[module.uid] = nodes_data;
                             dataToImport["drawflow"] = data_modules;
@@ -260,94 +279,17 @@
                     }
                 });
             },
-            formatNode(node){
-                var new_node = {};
-                new_node["id"]      =   node.id;
-                new_node["name"]    =   node.name; 
-                new_node["pos_x"]   =   node.pos_x;
-                new_node["pos_y"]   =   node.pos_y;
-                new_node["class"]   =   node.class;
-                new_node["data"]    =   node.data;
-                new_node["html"]    =   node.html;
-                new_node["typenode"] =  node.typenode;
-
-                var inputs = {};
-                var outputs = {};
-                node.inputs_outputs.map(function(input_output) {
-                    var node_name = input_output.name;
-                    var node_type = input_output.type;
-                    var node_connections = input_output.connections;
-                    var connections = [];
-                    if(node_connections){
-                        node_connections.map(function(connection) {
-                            if( node_type == "input"){
-                                connections.push({"node": connection.node_number,"input":connection.port});
-                            }else{
-                                connections.push({"node": connection.node_number,"output":connection.port});
-                            }
-                        });
-                    }
-
-                    if(node_type == "input"){
-                        inputs[node_name] = {"connections": connections};
-                    }else{
-                        outputs[node_name] = {"connections": connections};
-                    }
-
-                });
-                new_node["inputs"] = inputs;
-                new_node["outputs"] = outputs;
-                return new_node;
-            },
             createNode(module, node){
-                //if(Object.keys(node.data).length !== 0){
-                    node["data"]["dgraph.type"] = "Data"
-                //}
-                let inputs_outputs = [];
-                var input_output = {};
-                var connections = [];
-                var connection = {};
-                var i = 0;
-                //Format inputs
-                for (let key in node.inputs) {
-                    input_output = {};
-                    input_output["node_id"] = node.id; 
-                    input_output["name"] = key;
-                    input_output["type"] = "input";
-                    connections = [];
-                    for(i=0; i<node.inputs[key].connections.length; i++){
-                        connection = {};
-                        connection["node_number"] = node.inputs[key].connections[i].node;
-                        connection["port"] = node.inputs[key].connections[i].input;
-                        connection["dgraph.type"] = "Connection";
-                        connections.push(connection);
-                    }
-                    input_output["connections"] = connections;
-                    input_output["dgraph.type"] = "InputOutput";
-                    inputs_outputs.push(input_output);
+                node["data"]["dgraph.type"] = "Data"; //node data DgraphType 
+                for(let key in node.inputs){
+                    node.inputs[key]["dgraph.type"] = "ConnectionGroup";
                 }
-
-                //Format Outputs
-                for (let key in node.outputs) {
-                    input_output = {};
-                    input_output["name"] = key;
-                    input_output["type"] = "output";
-                    connections = [];
-                    for(i=0; i<node.outputs[key].connections.length; i++){
-                        connection = {};
-                        connection["node_number"] = node.outputs[key].connections[i].node;
-                        connection["port"] = node.outputs[key].connections[i].output;
-                        connection["dgraph.type"] = "Connection";
-                        connections.push(connection);
-                    }
-                    input_output["connections"] = connections;
-                    input_output["dgraph.type"] = "InputOutput";
-                    inputs_outputs.push(input_output);
+                for(let key in node.outputs){
+                    node.outputs[key]["dgraph.type"] = "ConnectionGroup";
                 }
-
-                //Add formated inputs/outputs to node - dgraph.type - module_uid
-                node["inputs_outputs"] = inputs_outputs;
-                node["dgraph.type"] = "Node";
+                node["inputs"]["dgraph.type"] = "Inputs"; //Node inputs DgraphType
+                node["outputs"]["dgraph.type"] = "Outputs"; //Node outputs DgraphType
+                node["dgraph.type"] = "DrawflowNode"; //node DgraphType
                 node["module_uid"] = module;
 
                 this.$store.dispatch('createNode', node).then(res=>{
@@ -358,11 +300,28 @@
                                 if(module_info.uid == module){
                                     current_module_key = key;
                                 }
-                            });
+                            });  
+                            let new_node = res.data.node;
+                            if(new_node.inputs == null){
+                                new_node["inputs"] = {};
+                            }
+                            if(new_node.outputs == null){
+                                new_node["outputs"] = {};
+                            }
+                            for(let key in new_node.inputs){
+                                if(key != "uid" && new_node.inputs[key].connections == null){
+                                    new_node.inputs[key].connections = [];
+                                }
+                            }
+                            for(let key in new_node.outputs){
+                                if(key != "uid" && new_node.outputs[key].connections == null){
+                                    new_node.outputs[key].connections = [];
+                                }
+                            }
                             if(this.modules_info[current_module_key].nodes){
-                                this.modules_info[current_module_key].nodes.push(res.data.node);
+                                this.modules_info[current_module_key].nodes.push(new_node);
                             }else{
-                                this.modules_info[current_module_key].nodes = [res.data.node];
+                                this.modules_info[current_module_key].nodes = [new_node];
                             }
                         }
                     }
@@ -370,30 +329,27 @@
             },
             deleteNode(id, module){
                 let current_module_key = -1;
-                let current_node_key = -1;
+                let current_node_key;
                 for (let key in this.modules_info) {
                     if(this.modules_info[key].uid == module){
                         current_module_key = key;
                         break;
                     }
                 }
+
                 for (let key in this.modules_info[current_module_key].nodes) {
                     if(this.modules_info[current_module_key].nodes[key].id == id){
                         current_node_key = key;
                         break;
                     }
                 }
-
-                if(current_node_key >= 0){
-                    let node = this.modules_info[current_module_key].nodes[current_node_key];
-                    this.$store.dispatch('deleteNode', node).then(res=>{
-                        if(res.status == 202){
-                            if(res.data.deleted){
-                                this.modules_info[current_module_key].nodes.splice(current_node_key,1);
-                            }
+                this.$store.dispatch('deleteNode', this.modules_info[current_module_key].nodes[current_node_key]).then(res=>{
+                    if(res.status == 202){
+                        if(res.data.deleted){
+                            //this.modules_info[current_module_key].nodes.splice(current_node_key,1);
                         }
-                    });
-                }
+                    }
+                });
             },
             createConnection(module, connection){
                 //{output_id: '1', input_id: '2', output_class: 'output_1', input_class: 'input_1'}
@@ -419,61 +375,34 @@
                 let output_node = this.modules_info[current_module_key].nodes[output_node_key];
                 let input_node = this.modules_info[current_module_key].nodes[input_node_key];
 
-
-                let output_inputs_outputs_key;
-                let input_inputs_outputs_key;
-
-                output_node.inputs_outputs.map(function(output, key3) {
-                    if(output.name == connection.output_class){
-                        output_inputs_outputs_key = key3;
-                    }
-                });
-
-                input_node.inputs_outputs.map(function(input, key4) {
-                    if(input.name == connection.input_class){
-                        input_inputs_outputs_key = key4;
-                    }
-                });
+                let output_group_connections = output_node.outputs[connection.output_class];
+                let input_group_connections = input_node.inputs[connection.input_class];
 
                 let output_connection = {};
-                output_connection["node_number"] = connection.input_id;
-                output_connection["port"] = connection.input_class;
+                output_connection["node"] = connection.input_id;
+                output_connection["output"] = connection.input_class;
+                output_connection["group"] = {'uid': output_group_connections.uid};
                 output_connection["dgraph.type"] = "Connection";
 
                 let input_connection = {};
-                input_connection["node_number"] = connection.output_id;
-                input_connection["port"] = connection.output_class;
+                input_connection["node"] = connection.output_id;
+                input_connection["input"] = connection.output_class;
+                input_connection["group"] = {'uid':input_group_connections.uid};
                 input_connection["dgraph.type"] = "Connection";
 
                 let payload = {
                     'output_connection': output_connection,
-                    'input_connection': input_connection,
-                    'output_input_output_uid': this.modules_info[current_module_key].nodes[output_node_key].inputs_outputs[output_inputs_outputs_key].uid,
-                    'input_input_output_uid': this.modules_info[current_module_key].nodes[input_node_key].inputs_outputs[input_inputs_outputs_key].uid
+                    'input_connection': input_connection
                 }
 
                 this.$store.dispatch('createNodeConnections', payload).then(res=>{
                     if(res.status == 201){
                         output_connection["uid"] = res.data.connection_output_uid;
                         input_connection["uid"] = res.data.connection_input_uid;
-                        if(this.modules_info[current_module_key].nodes[output_node_key].inputs_outputs[output_inputs_outputs_key].connections){
-                            this.modules_info[current_module_key].nodes[output_node_key].inputs_outputs[output_inputs_outputs_key].connections.push(
-                                output_connection                                
-                            );
-                            
-                        }else{
-                            this.modules_info[current_module_key].nodes[output_node_key].inputs_outputs[output_inputs_outputs_key]["connections"] = [output_connection];
-                        }
-
-                        if(this.modules_info[current_module_key].nodes[input_node_key].inputs_outputs[input_inputs_outputs_key].connections){
-                            this.modules_info[current_module_key].nodes[input_node_key].inputs_outputs[input_inputs_outputs_key].connections.push(
-                                input_connection
-                            );
-                        }else{
-                            this.modules_info[current_module_key].nodes[input_node_key].inputs_outputs[input_inputs_outputs_key]["connections"] = [input_connection];
-                        }
+                        output_group_connections.connections.push(output_connection);
+                        input_group_connections.connections.push(input_connection);
                     }
-                }); 
+                });
             },
             removeConnection(module, connection){
                 let current_module_key = -1;
@@ -498,52 +427,36 @@
                 let output_node = this.modules_info[current_module_key].nodes[output_node_key];
                 let input_node = this.modules_info[current_module_key].nodes[input_node_key];
 
+                let output_group_connections = output_node.outputs[connection.output_class];
+                let input_group_connections = input_node.inputs[connection.input_class];
 
-                let output_input_output_key;
-                let input_input_output_key;
-
-                output_node.inputs_outputs.map(function(output, key3) {
-                    if(output.name == connection.output_class){
-                        output_input_output_key = key3;
-                    }
-                });
-
-                input_node.inputs_outputs.map(function(input, key4) {
-                    if(input.name == connection.input_class){
-                        input_input_output_key = key4;
-                    }
-                });
-                
-                let output_connections = this.modules_info[current_module_key].nodes[output_node_key].inputs_outputs[output_input_output_key].connections;
-                let input_connections = this.modules_info[current_module_key].nodes[input_node_key].inputs_outputs[input_input_output_key].connections;
-
-                let output_connection_key;
+                let output_connection = {};
+                let input_connection = {};
                 let input_connection_key;
+                let output_connection_key;
 
-                let output_connection_parent_uid = this.modules_info[current_module_key].nodes[output_node_key].inputs_outputs[output_input_output_key].uid;
-                let input_connection_parent_uid = this.modules_info[current_module_key].nodes[input_node_key].inputs_outputs[input_input_output_key].uid;
-                
-                output_connections.map(function(output_connection, key5) {
-                    if(output_connection.node_number == connection.input_id && output_connection.port == connection.input_class){
-                        output_connection_key = key5;
+                for (let key in input_group_connections.connections){
+                    if(input_group_connections.connections[key].node == connection.output_id){
+                        input_connection = input_group_connections.connections[key];
+                        input_connection_key = key;
                     }
-                });
+                }
 
-                input_connections.map(function(input_connection, key6) {
-                    if(input_connection.node_number == connection.output_id && input_connection.port == connection.output_class){
-                        input_connection_key = key6;
+                for (let key in output_group_connections.connections){
+                    if(output_group_connections.connections[key].node == connection.input_id){
+                        output_connection = output_group_connections.connections[key];
+                        output_connection_key = key;
                     }
-                });
+                }
+
                 let payload = {
-                    'output_connection': output_connections[output_connection_key], 
-                    'input_connection': input_connections[input_connection_key],
-                    'output_connection_parent_uid': output_connection_parent_uid,
-                    'input_connection_parent_uid': input_connection_parent_uid
+                    'output_connection': output_connection, 
+                    'input_connection': input_connection
                 };
                 this.$store.dispatch('deleteConnections', payload).then(res=>{
                     if(res.status == 200){
-                        this.modules_info[current_module_key].nodes[output_node_key].inputs_outputs[output_input_output_key].connections.splice(output_connection_key,1);
-                        this.modules_info[current_module_key].nodes[input_node_key].inputs_outputs[input_input_output_key].connections.splice(input_connection_key,1);
+                        input_group_connections.connections.splice(input_connection_key,1);
+                        output_group_connections.connections.splice(output_connection_key,1);
                     }
                 });
             },
@@ -737,40 +650,6 @@
                 this.variable_names = [];
                 this.nodes = nodes;
 
-                //let variables = {};
-                //let constants = {};
-
-                /*for( let key in nodes ){
-                    let node = nodes[key];
-
-                    //Format variables
-                    if(node.name == "variable"){
-                        if(this.variableDataValidate(node.data)){
-                            let data = {};
-                            data["name"]= node.data.name;
-                            if(node.data.value){
-                                data["value"] = parseInt(node.data.value);
-                            }else{
-                                data["value"] = parseInt(0);
-                            }
-                            variables[node.id] = data;
-                        }else{
-                            return false;
-                        }
-                        this.variable_names.push(node.data.name);
-                    }
-
-                    //Format constants
-                    if(node.name == "number"){
-                        if(node.data.value){
-                            constants[node.id] = parseInt(node.data.value);
-                        }else{
-                            constants[node.id] = 0;
-                        }
-                    }
-
-                }*/
-
                 //console.log(nodes);
                 let root = this.getRootNode(nodes);
                 let object_root = this.recursiveChildren(root);
@@ -822,9 +701,6 @@
                 python_result.innerHTML = "";
                 let btn_open_code_modal = document.getElementById("btn-open-code-modal");
                 btn_open_code_modal.click();
-
-                //console.log(variables);
-                //console.log(constants);
             }, 
             variableDataValidate(data){
                 if(!data.name){
