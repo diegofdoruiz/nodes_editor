@@ -109,6 +109,13 @@ export default class MyDrawflow {
     }
     
     drop(ev) {
+        if(this.editor.module == "Home"){
+            Swal.fire({
+                title: "You must add a module first",
+                showCancelButton: false,
+            });
+            return false;
+        }
         if (ev.type === "touchend") {
         var parentdrawflow = document.elementFromPoint( this.mobile_last_move.touches[0].clientX, this.mobile_last_move.touches[0].clientY).closest("#drawflow");
         if(parentdrawflow != null) {

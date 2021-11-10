@@ -151,7 +151,6 @@
     import Drawflow from 'drawflow'
     import Swal from 'sweetalert2'
     import MyDrawflow from '../../public/assets/js/mydrawflow.js'
-    //import Node from '../../public/assets/js/node-class.js'
     export default {
         data(){
             return {
@@ -346,7 +345,7 @@
                 this.$store.dispatch('deleteNode', this.modules_info[current_module_key].nodes[current_node_key]).then(res=>{
                     if(res.status == 202){
                         if(res.data.deleted){
-                            //this.modules_info[current_module_key].nodes.splice(current_node_key,1);
+                            this.modules_info[current_module_key].nodes.splice(current_node_key,1);
                         }
                     }
                 });
