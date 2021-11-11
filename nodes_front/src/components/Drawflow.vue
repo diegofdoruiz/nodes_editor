@@ -267,7 +267,6 @@
                         //Add default
                         data_modules["Home"] = {"data":{}};
                         if(Object.keys(dataToImport).length !== 0){
-                            //console.log(dataToImport);
                             this.mydrawflow.editor.import(dataToImport);
                         }
                         if(first_module_uid != ""){
@@ -603,6 +602,7 @@
                 let user = JSON.parse(localStorage.getItem('user'));
                 event.stopPropagation();
                 Swal.fire({
+                    icon: 'error',
                     title: 'Deleting module. Are you sure?',
                     inputAttributes: {
                         autocapitalize: 'off'
@@ -649,10 +649,28 @@
                 this.variable_names = [];
                 this.nodes = nodes;
 
-                //console.log(nodes);
                 let root = this.getRootNode(nodes);
                 let object_root = this.recursiveChildren(root);
-                //console.log(object_root); //AQUIIIIII
+
+                let errors = this.treeVerification(object_root);
+
+                if(errors.length > 0){
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Errors were found...',
+                        text: ".",
+                    });
+
+                    let html_list = document.createElement("ul");
+                    for(let key in errors){
+                        let html_item = document.createElement("li");
+                        html_item.appendChild(document.createTextNode(errors[key].error));
+                        html_list.appendChild(html_item);
+                    }
+                    document.getElementById("swal2-html-container").appendChild(html_list);
+                    return false;
+                }
 
                 //Unparse python code
                 let line = "from browser import document\n\n";
@@ -700,24 +718,6 @@
                 python_result.innerHTML = "";
                 let btn_open_code_modal = document.getElementById("btn-open-code-modal");
                 btn_open_code_modal.click();
-            }, 
-            variableDataValidate(data){
-                if(!data.name){
-                    Swal.fire({
-                        title: "All variables required a name",
-                        showCancelButton: false,
-                    });
-                    return false;
-                }
-                if(this.variable_names.indexOf(data.name) > -1){
-                    Swal.fire({
-                        title: "You can not redefine a variable",
-                        showCancelButton: false,
-                    });
-                    return false;
-                }
-
-                return true;
             },
             getRootNode(nodes){
                 for(let key in nodes){
@@ -921,7 +921,6 @@
                             comparation_node = child_node;
                         }else if(child_node[object_node.id] == "input_2"){ //If Body
                             body_child = child_node;
-                            console.log(body_child);
                         }
                     }
 
@@ -973,6 +972,107 @@
                     str_return += "constant_"+object_node.id+" = "+name_child_0+" "+operator+" "+name_child_1;
                 }
                 return str_return;
+            },
+            treeVerification(node_tree){
+                if(node_tree.type == "number"){
+                    let errors = [];
+                    if(!node_tree.data.value){
+                        errors.push({
+                            id: node_tree.id,
+                            error: "The node number #"+node_tree.id+" has no value"
+                        });
+                    }
+                    return errors;
+                }else if(node_tree.type == "variable"){
+                    let errors = [];
+                    if(!node_tree.data.name){
+                        errors.push({
+                            id: node_tree.id,
+                            error: "The node  variable #"+node_tree.id+" has no name"
+                        });
+                    }
+                    if(node_tree.children.length > 0){
+                        for(let i = 0; i<node_tree.children.length; i++){
+                            errors = errors.concat(this.treeVerification(node_tree.children[i]));
+                        }
+                    }
+                    return errors;
+                }else if(node_tree.type == "addition" || node_tree.type == "subtraction" || node_tree.type == "multiplication" || node_tree.type == "comparation"){
+                    let errors = [];
+                    if(node_tree.children.length != 2){
+                        errors.push({
+                            id: node_tree.id,
+                            error: "The node "+node_tree.type+" #"+node_tree.id+" requires two numeric values"
+                        });
+                    }
+                    if(node_tree.children.length > 0){
+                        for(let i = 0; i<node_tree.children.length; i++){
+                            errors = errors.concat(this.treeVerification(node_tree.children[i]));
+                        }
+                    }
+                    return errors;
+                }else if(node_tree.type == "division"){
+                    let errors = [];
+                    if(node_tree.children.length != 2){
+                        errors.push({
+                            id: node_tree.id,
+                            error: "The node "+node_tree.type+" #"+node_tree.id+" requires two numeric values"
+                        });
+                    }
+                    if(node_tree.children.length == 2){
+                        if(node_tree.children[1].type == "number" && (node_tree.children[1].data.value == 0 || node_tree.children[1].data.value == "0")){
+                            errors.push({
+                                id: node_tree.id,
+                                error: "The node "+node_tree.type+" #"+node_tree.id+" has a zero in the divisor"
+                            });
+                        }
+                        for(let i = 0; i<node_tree.children.length; i++){
+                            errors = errors.concat(this.treeVerification(node_tree.children[i]));
+                        }
+                    }
+                    return errors;
+                }else if(node_tree.type == "assign"){
+                    let errors = [];
+                    if(node_tree.children.length != 1){
+                        errors.push({
+                            id: node_tree.id,
+                            error: "The node "+node_tree.type+" #"+node_tree.id+" requires one numeric value"
+                        });
+                    }
+                    //Group variables names
+                    let module_data = this.mydrawflow.editor.drawflow.drawflow[this.mydrawflow.editor.module].data;
+                    let variable_names = [];
+                    for (let key in module_data){
+                        if(module_data[key].name == "variable"){
+                            if(module_data[key].data.name){
+                                variable_names.push(module_data[key].data.name);
+                            }
+                        }
+                    }
+                    if(node_tree.data.name == "" || !node_tree.data.name){
+                        errors.push({
+                            id: node_tree.id,
+                            error: "The node "+node_tree.type+" #"+node_tree.id+" does not have an associated variable"
+                        });
+                    }else{
+                        if(!variable_names.includes(node_tree.data.name)){
+                            errors.push({
+                                id: node_tree.id,
+                                error: "The node "+node_tree.type+" #"+node_tree.id+" the variable with name '"+node_tree.data.name+"' does not exist",
+                            });
+                        }
+                    }
+                    if(node_tree.children.length > 0){
+                        for(let i = 0; i<node_tree.children.length; i++){
+                            errors = errors.concat(this.treeVerification(node_tree.children[i]));
+                        }
+                    }
+                    return errors;
+                }/*else if(node_tree.type == "ifstatement"){
+                    
+                }else if(node_tree.type == "myfor"){
+                    
+                }*/
             }
         }
     }

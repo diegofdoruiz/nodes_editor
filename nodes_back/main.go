@@ -55,7 +55,7 @@ func getDgraphClient() (*dgo.Dgraph, CancelFunc) {
 
 func main() {
 	log.Printf(dbCreateUser("diego", "test"))
-	//log.Printf(dbCreateUser("mario", "test"))
+	log.Printf(dbCreateUser("mario", "test"))
 
 	flag.Parse()
 	r := chi.NewRouter()
@@ -659,7 +659,9 @@ func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -669,7 +671,9 @@ func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -679,7 +683,9 @@ func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -689,7 +695,9 @@ func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -699,7 +707,9 @@ func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -712,7 +722,9 @@ func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -722,7 +734,9 @@ func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -732,7 +746,9 @@ func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -742,7 +758,9 @@ func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -752,7 +770,9 @@ func dbCreateNode(drawflow_node *DrawflowNode) (DrawflowNode, error) {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -804,7 +824,9 @@ func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -814,7 +836,9 @@ func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -824,7 +848,9 @@ func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -834,7 +860,9 @@ func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -844,7 +872,9 @@ func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -857,7 +887,9 @@ func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -867,7 +899,9 @@ func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -877,7 +911,9 @@ func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -887,7 +923,9 @@ func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
@@ -897,7 +935,9 @@ func dbModuleGetNodes(module_uid string) []*DrawflowNode {
 					uid
 					connections: :~group{
 						uid
-						expand(_all_)
+						node
+						input
+						output
 						group{
 							uid
 						}
